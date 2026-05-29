@@ -14,6 +14,9 @@ A WordPress plugin for running Solana SPL token giveaways. Users enter their wal
 - **Balance qualification** — checks each wallet's SPL token balance against a minimum holding requirement
 - **Random draw** — configurable number of winners selected by `shuffle()` / Fisher-Yates
 - **Auto token send** — raw Solana transaction built and signed in PHP (no external packages)
+- **On-chain confirmation** — each send is verified via `getSignatureStatuses` before being marked sent; failed/unconfirmed txs are recorded as failed
+- **Sender funding check** — aborts the draw if the hot wallet lacks enough SOL to cover fees + rent, instead of attempting partial sends
+- **Concurrency-safe entries** — entry caps and the countdown trigger are enforced atomically, so simultaneous submissions can't overshoot the cap or double-schedule the draw
 - **Multiple campaigns** — unlimited campaigns, each with its own shortcode
 - **Per-campaign styling** — color pickers with alpha support in admin; CSS custom properties
 - **Max entries cap** — optional hard limit on total entries (0 = unlimited)
@@ -105,6 +108,9 @@ Tokens are sent via a raw Solana legacy transaction built entirely in PHP:
 6. Serialize the transaction message (header + accounts + blockhash + instructions)
 7. Sign with `sodium_crypto_sign_detached()`
 8. Send via `sendTransaction` RPC call
+9. Confirm on-chain via `getSignatureStatuses` (polled until confirmed/finalized or timeout) — a returned signature only means the tx was accepted into the mempool, not that it succeeded
+
+Before any sends, the sender wallet's SOL balance is checked against the worst-case cost (transaction fees plus token-account rent for every winner). If it's underfunded, the draw is aborted and all drawn winners are marked failed rather than sending to only some.
 
 No external Solana SDKs or Composer packages required.
 
@@ -152,6 +158,18 @@ WP-Cron only fires on page load. If no traffic hits your site exactly when the c
 2. **Admin manual trigger** — the Entries view has a "⚡ Force Process Now" button.
 
 For production deployments with high reliability requirements, configure a real cron job to hit `wp-cron.php` on a schedule.
+
+---
+
+## Changelog
+
+### 1.0.1
+- **On-chain confirmation:** transfers are now confirmed via `getSignatureStatuses` before being marked `sent`; on-chain failures and timeouts are recorded as `failed` (with the signature kept for debugging).
+- **Sender SOL fee pre-check:** the draw aborts cleanly if the hot wallet can't cover fees + token-account rent for all winners, avoiding partial sends.
+- **Concurrency-safe entries:** `max_entries` is enforced atomically (per-row ordinal) and the `pending → countdown` transition uses a conditional update, preventing cap overshoot and double-scheduling under simultaneous submissions.
+
+### 1.0.0
+- Initial release.
 
 ---
 

@@ -41,6 +41,17 @@ class Airdrop_Solana {
 	}
 
 	/**
+	 * Returns the SOL balance of a wallet in lamports (0 on error).
+	 */
+	public function get_sol_balance( string $pubkey ): int {
+		$result = $this->rpc( 'getBalance', [ $pubkey, [ 'commitment' => 'confirmed' ] ] );
+		if ( is_wp_error( $result ) ) {
+			return 0;
+		}
+		return (int) ( $result['value'] ?? 0 );
+	}
+
+	/**
 	 * Sends SPL tokens from the sender keypair to $to_wallet.
 	 *
 	 * @param string $privkey_b58  Base58-encoded private key (32 or 64 bytes).
@@ -123,9 +134,50 @@ class Airdrop_Solana {
 		}
 		// sendTransaction returns the signature string directly.
 		if ( is_string( $send_result ) ) {
+			// Confirm on-chain — a returned signature only means the tx was
+			// accepted into the mempool, not that it succeeded.
+			$confirmed = $this->confirm_signature( $send_result );
+			if ( is_wp_error( $confirmed ) ) {
+				return $confirmed;
+			}
 			return $send_result;
 		}
 		return new \WP_Error( 'send_failed', 'Unexpected sendTransaction response: ' . wp_json_encode( $send_result ) );
+	}
+
+	/**
+	 * Polls getSignatureStatuses until the tx is confirmed/finalized or times out.
+	 * Returns true on success, or WP_Error (with the signature in error data) on
+	 * on-chain failure or timeout so the caller can still record the signature.
+	 */
+	private function confirm_signature( string $sig, int $timeout = 60 ): true|\WP_Error {
+		$deadline = time() + $timeout;
+		do {
+			$res = $this->rpc( 'getSignatureStatuses', [ [ $sig ], [ 'searchTransactionHistory' => true ] ] );
+			if ( ! is_wp_error( $res ) && ! empty( $res['value'][0] ) ) {
+				$st = $res['value'][0];
+				if ( ! empty( $st['err'] ) ) {
+					return new \WP_Error(
+						'tx_failed',
+						'Transaction failed on-chain: ' . wp_json_encode( $st['err'] ),
+						[ 'signature' => $sig ]
+					);
+				}
+				$status = $st['confirmationStatus'] ?? '';
+				// confirmations === null means the tx is finalized/rooted.
+				if ( $st['confirmations'] === null || in_array( $status, [ 'confirmed', 'finalized' ], true ) ) {
+					return true;
+				}
+			}
+			if ( time() >= $deadline ) {
+				return new \WP_Error(
+					'tx_unconfirmed',
+					'Transaction not confirmed within timeout.',
+					[ 'signature' => $sig ]
+				);
+			}
+			sleep( 2 );
+		} while ( true );
 	}
 
 	// ── Transaction Building ───────────────────────────────────────────

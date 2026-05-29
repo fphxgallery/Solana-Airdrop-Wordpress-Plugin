@@ -111,6 +111,23 @@ class Airdrop_DB {
 		);
 	}
 
+	/**
+	 * Atomically flips status pending→countdown. Returns true only for the
+	 * single caller that wins the flip, so cron is scheduled exactly once.
+	 */
+	public static function start_countdown_if_pending( int $id ): bool {
+		global $wpdb;
+		$rows = $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$wpdb->prefix}airdrop_campaigns
+				 SET status = 'countdown', countdown_start = %s
+				 WHERE id = %d AND status = 'pending'",
+				current_time( 'mysql' ), $id
+			)
+		);
+		return (int) $rows === 1;
+	}
+
 	public static function delete_campaign( int $id ): bool {
 		global $wpdb;
 		$wpdb->delete( "{$wpdb->prefix}airdrop_entries", [ 'campaign_id' => $id ], [ '%d' ] );
@@ -183,6 +200,26 @@ class Airdrop_DB {
 			"{$wpdb->prefix}airdrop_entries",
 			$data,
 			[ 'id' => $id ]
+		);
+	}
+
+	public static function delete_entry( int $id ): bool {
+		global $wpdb;
+		return (bool) $wpdb->delete( "{$wpdb->prefix}airdrop_entries", [ 'id' => $id ], [ '%d' ] );
+	}
+
+	/**
+	 * Ordinal position of an entry within its campaign (count of rows with
+	 * id <= $entry_id). Monotonic ids make this stable under concurrency, so
+	 * it gives an authoritative cap check without a transaction.
+	 */
+	public static function get_entry_ordinal( int $campaign_id, int $entry_id ): int {
+		global $wpdb;
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->prefix}airdrop_entries WHERE campaign_id = %d AND id <= %d",
+				$campaign_id, $entry_id
+			)
 		);
 	}
 

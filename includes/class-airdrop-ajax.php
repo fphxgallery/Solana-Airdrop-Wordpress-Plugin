@@ -57,21 +57,33 @@ class Airdrop_Ajax {
 		}
 
 		$already_entered = Airdrop_DB::wallet_already_entered( $campaign_id, $wallet );
-		Airdrop_DB::insert_entry( $campaign_id, $wallet, $ip );
+		$entry_id        = Airdrop_DB::insert_entry( $campaign_id, $wallet, $ip );
+
+		// Authoritative max-entries enforcement. The pre-insert check above is a
+		// fast path; this closes the check-then-insert race. A row's ordinal
+		// (count of rows with id <= its own) is monotonic, so under concurrency
+		// exactly $max rows get ordinal <= $max — roll back anything past the cap.
+		if ( $max > 0 && $entry_id ) {
+			$ordinal = Airdrop_DB::get_entry_ordinal( $campaign_id, (int) $entry_id );
+			if ( $ordinal > $max ) {
+				Airdrop_DB::delete_entry( (int) $entry_id );
+				wp_send_json_error( [ 'message' => 'Entry limit reached. The pool is full.' ] );
+			}
+		}
 
 		$entry_count = Airdrop_DB::get_entry_count( $campaign_id );
 
-		// Start countdown when threshold is reached.
+		// Start countdown when threshold is reached. The conditional UPDATE flips
+		// status pending→countdown atomically; only the request that wins the flip
+		// schedules the cron, preventing double-scheduling under concurrency.
 		$countdown_target = null;
 		if ( $campaign->status === 'pending' && $entry_count >= (int) $campaign->wallet_threshold ) {
-			$fire_at = time() + (int) $campaign->countdown_seconds;
-			Airdrop_DB::update_campaign( $campaign_id, [
-				'status'          => 'countdown',
-				'countdown_start' => current_time( 'mysql' ),
-			] );
-			Airdrop_Cron::schedule( $campaign_id, $fire_at );
-			$campaign->status          = 'countdown';
-			$campaign->countdown_start = current_time( 'mysql' );
+			if ( Airdrop_DB::start_countdown_if_pending( $campaign_id ) ) {
+				$fire_at = time() + (int) $campaign->countdown_seconds;
+				Airdrop_Cron::schedule( $campaign_id, $fire_at );
+			}
+			// Re-fetch authoritative status + countdown_start (set by whichever request won the flip).
+			$campaign = Airdrop_DB::get_campaign( $campaign_id );
 		}
 
 		if ( $campaign->status === 'countdown' && $campaign->countdown_start ) {

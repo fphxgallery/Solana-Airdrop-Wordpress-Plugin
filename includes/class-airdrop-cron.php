@@ -56,6 +56,23 @@ class Airdrop_Cron {
 			Airdrop_DB::update_entry( (int) $winner->id, [ 'status' => 'winner' ] );
 		}
 
+		// Abort sends if the sender lacks enough SOL to cover fees (and, worst
+		// case, rent for a new recipient token account on every transfer).
+		// Fee ~5000 lamports/sig; ATA rent ~2039280 lamports.
+		$required_lamports = count( $winners ) * ( 5000 + 2039280 );
+		$sol_balance       = $solana->get_sol_balance( $campaign->sender_pubkey );
+		if ( $sol_balance < $required_lamports ) {
+			error_log( "[Airdrop] Insufficient SOL on sender {$campaign->sender_pubkey}: have {$sol_balance} lamports, need ~{$required_lamports}." );
+			$failed = [];
+			foreach ( $winners as $winner ) {
+				Airdrop_DB::update_entry( (int) $winner->id, [ 'status' => 'failed' ] );
+				$failed[] = [ 'wallet' => $winner->wallet_address, 'status' => 'failed', 'tx' => '' ];
+			}
+			Airdrop_DB::update_campaign( $campaign_id, [ 'status' => 'complete' ] );
+			self::send_admin_email( $campaign, $failed );
+			return;
+		}
+
 		// Send tokens.
 		$privkey      = Airdrop_Solana::decrypt_privkey( $campaign->sender_privkey_enc );
 		$sent_winners = [];
@@ -69,11 +86,16 @@ class Airdrop_Cron {
 			);
 
 			if ( is_wp_error( $result ) ) {
-				Airdrop_DB::update_entry( (int) $winner->id, [
-					'status' => 'failed',
-				] );
+				// A confirm-failure carries the signature so we can still record it.
+				$err_data = $result->get_error_data();
+				$failed_sig = is_array( $err_data ) && ! empty( $err_data['signature'] ) ? $err_data['signature'] : null;
+				$update = [ 'status' => 'failed' ];
+				if ( $failed_sig ) {
+					$update['tx_signature'] = $failed_sig;
+				}
+				Airdrop_DB::update_entry( (int) $winner->id, $update );
 				error_log( "[Airdrop] Send failed for {$winner->wallet_address}: " . $result->get_error_message() );
-				$sent_winners[] = [ 'wallet' => $winner->wallet_address, 'status' => 'failed', 'tx' => '' ];
+				$sent_winners[] = [ 'wallet' => $winner->wallet_address, 'status' => 'failed', 'tx' => $failed_sig ?? '' ];
 			} else {
 				// $result is the transaction signature string.
 				Airdrop_DB::update_entry( (int) $winner->id, [
