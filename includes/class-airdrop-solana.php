@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Solana RPC + SPL token transfer via raw transaction building.
  *
- * Requires: PHP sodium extension (php7.2+), GMP extension.
+ * Requires: PHP sodium extension (php7.2+), BCMath extension.
  */
 class Airdrop_Solana {
 
@@ -85,8 +85,8 @@ class Airdrop_Solana {
 		if ( ! extension_loaded( 'sodium' ) ) {
 			return new \WP_Error( 'no_sodium', 'PHP sodium extension is required.' );
 		}
-		if ( ! extension_loaded( 'gmp' ) ) {
-			return new \WP_Error( 'no_gmp', 'PHP GMP extension is required.' );
+		if ( ! extension_loaded( 'bcmath' ) ) {
+			return new \WP_Error( 'no_bcmath', 'PHP BCMath extension is required.' );
 		}
 
 		// Decode keypair.
@@ -320,48 +320,20 @@ class Airdrop_Solana {
 	/**
 	 * Returns true if the 32-byte compressed point lies on the Ed25519 curve.
 	 *
-	 * Ed25519 curve: -x^2 + y^2 = 1 + d*x^2*y^2 (mod p)
-	 * A point is valid iff (y^2 - 1) / (d*y^2 + 1) is a quadratic residue mod p.
+	 * PDAs must be OFF the curve, so this returns false for valid PDAs.
+	 * libsodium's Ed25519→Curve25519 conversion internally decompresses the
+	 * point and throws for off-curve inputs — no big-integer math needed.
 	 */
 	private function is_on_ed25519_curve( string $bytes32 ): bool {
-		static $p = null, $d = null, $exp = null;
-		if ( $p === null ) {
-			$p   = gmp_sub( gmp_pow( gmp_init( 2 ), 255 ), gmp_init( 19 ) );
-			$d   = gmp_mod(
-				gmp_mul(
-					gmp_mod( gmp_sub( $p, gmp_init( 121665 ) ), $p ),
-					gmp_invert( gmp_init( 121666 ), $p )
-				),
-				$p
-			);
-			$exp = gmp_div( gmp_sub( $p, 1 ), 2 );
-		}
-
-		// Parse y (little-endian, clear sign bit from last byte).
-		$y_bytes    = $bytes32;
-		$y_bytes[31] = chr( ord( $y_bytes[31] ) & 0x7F );
-		$y = gmp_import( $y_bytes, 1, GMP_LSW_FIRST );
-
-		if ( gmp_cmp( $y, $p ) >= 0 ) {
+		if ( strlen( $bytes32 ) !== 32 ) {
 			return false;
 		}
-
-		$y2  = gmp_mod( gmp_mul( $y, $y ), $p );
-		$num = gmp_mod( gmp_sub( $y2, 1 ), $p );
-		$den = gmp_mod( gmp_add( gmp_mul( $d, $y2 ), 1 ), $p );
-
-		if ( gmp_cmp( $den, 0 ) === 0 ) {
+		try {
+			sodium_crypto_sign_ed25519_pk_to_curve25519( $bytes32 );
+			return true;
+		} catch ( \SodiumException $e ) {
 			return false;
 		}
-
-		$x2 = gmp_mod( gmp_mul( $num, gmp_invert( $den, $p ) ), $p );
-
-		if ( gmp_cmp( $x2, 0 ) === 0 ) {
-			return true; // x = 0 is a valid point (it's the "neutral" for x)
-		}
-
-		// Euler's criterion: quadratic residue iff x2^((p-1)/2) == 1 mod p.
-		return gmp_cmp( gmp_powm( $x2, $exp, $p ), 1 ) === 0;
 	}
 
 	// ── RPC Helpers ────────────────────────────────────────────────────
@@ -424,23 +396,22 @@ class Airdrop_Solana {
 
 	public function base58_decode( string $input ): string {
 		$alphabet = self::BASE58_ALPHABET;
-		$n        = gmp_init( 0 );
+		$n        = '0';
 
 		for ( $i = 0; $i < strlen( $input ); $i++ ) {
-			$char = $input[ $i ];
-			$pos  = strpos( $alphabet, $char );
+			$pos = strpos( $alphabet, $input[ $i ] );
 			if ( $pos === false ) {
 				return '';
 			}
-			$n = gmp_add( gmp_mul( $n, 58 ), $pos );
+			$n = bcadd( bcmul( $n, '58' ), (string) $pos );
 		}
 
-		// Convert GMP to bytes (big-endian).
-		$hex = gmp_strval( $n, 16 );
-		if ( strlen( $hex ) % 2 !== 0 ) {
-			$hex = '0' . $hex;
+		// Convert decimal string to bytes (big-endian).
+		$bytes = '';
+		while ( bccomp( $n, '0' ) > 0 ) {
+			$bytes = chr( (int) bcmod( $n, '256' ) ) . $bytes;
+			$n     = bcdiv( $n, '256', 0 );
 		}
-		$bytes = hex2bin( $hex );
 
 		// Prepend leading zero bytes for each leading '1'.
 		$leading = 0;
@@ -453,12 +424,17 @@ class Airdrop_Solana {
 
 	public function base58_encode( string $data ): string {
 		$alphabet = self::BASE58_ALPHABET;
-		$n        = gmp_init( bin2hex( $data ), 16 );
-		$result   = '';
 
-		while ( gmp_cmp( $n, 0 ) > 0 ) {
-			[ $n, $rem ] = gmp_div_qr( $n, 58 );
-			$result = $alphabet[ gmp_intval( $rem ) ] . $result;
+		// Convert bytes (big-endian) to a decimal string.
+		$n = '0';
+		for ( $i = 0; $i < strlen( $data ); $i++ ) {
+			$n = bcadd( bcmul( $n, '256' ), (string) ord( $data[ $i ] ) );
+		}
+
+		$result = '';
+		while ( bccomp( $n, '0' ) > 0 ) {
+			$result = $alphabet[ (int) bcmod( $n, '58' ) ] . $result;
+			$n      = bcdiv( $n, '58', 0 );
 		}
 
 		// Leading zeros.

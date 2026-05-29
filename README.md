@@ -30,7 +30,7 @@ A WordPress plugin for running Solana SPL token giveaways. Users enter their wal
 ## Requirements
 
 - WordPress 6.0+
-- PHP 8.0+ with extensions: `sodium`, `gmp`, `openssl`
+- PHP 8.0+ with extensions: `sodium`, `bcmath`, `openssl`
 - A Solana RPC endpoint (mainnet, devnet, or private RPC like Helius/QuickNode)
 - A funded sender wallet (holds tokens + SOL for transaction fees)
 
@@ -162,6 +162,9 @@ For production deployments with high reliability requirements, configure a real 
 ---
 
 ## Changelog
+
+### 1.0.5
+- **Dropped the GMP requirement; now uses BCMath.** Base58 encode/decode was rewritten with BCMath (`bcadd`/`bcmul`/`bcdiv`/`bcmod`) instead of GMP, and the Ed25519 off-curve check for ATA/PDA derivation now uses libsodium's `sodium_crypto_sign_ed25519_pk_to_curve25519()` (which throws on off-curve input) instead of GMP modular arithmetic. Auto-send now requires only `sodium` + `bcmath`, both far more commonly available than GMP.
 
 ### 1.0.4
 - **Suppress false update notices:** WordPress matches plugins to the wordpress.org directory by folder slug, and an unrelated plugin named `airdrop` there was being offered as an "update" (which would have overwritten this plugin). Added a `site_transient_update_plugins` filter so this plugin removes itself from core's update checks. It is self-managed via GitHub releases.

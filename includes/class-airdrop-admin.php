@@ -227,13 +227,13 @@ class Airdrop_Admin {
 		<div class="wrap">
 			<h1><?php echo esc_html( $title ); ?></h1>
 
-			<?php if ( ! extension_loaded( 'sodium' ) || ! extension_loaded( 'gmp' ) ) : ?>
+			<?php if ( ! extension_loaded( 'sodium' ) || ! extension_loaded( 'bcmath' ) ) : ?>
 			<div class="notice notice-error">
-				<p><strong>Warning:</strong> Auto-send requires the PHP <code>sodium</code> and <code>gmp</code> extensions.
+				<p><strong>Warning:</strong> Auto-send requires the PHP <code>sodium</code> and <code>bcmath</code> extensions.
 				<?php
 				$missing = [];
 				if ( ! extension_loaded( 'sodium' ) ) $missing[] = 'sodium';
-				if ( ! extension_loaded( 'gmp' ) )    $missing[] = 'gmp';
+				if ( ! extension_loaded( 'bcmath' ) ) $missing[] = 'bcmath';
 				echo 'Missing: ' . implode( ', ', $missing ) . '.';
 				?>
 				</p>
