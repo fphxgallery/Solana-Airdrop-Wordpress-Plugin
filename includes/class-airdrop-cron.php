@@ -21,11 +21,16 @@ class Airdrop_Cron {
 	 */
 	public function process_campaign( int $campaign_id ): void {
 		$campaign = Airdrop_DB::get_campaign( $campaign_id );
-		if ( ! $campaign || $campaign->status !== 'countdown' ) {
-			return; // Idempotent guard.
+		if ( ! $campaign ) {
+			return;
 		}
 
-		Airdrop_DB::update_campaign( $campaign_id, [ 'status' => 'distributing' ] );
+		// Atomic countdown→distributing flip. Only the caller that wins the flip
+		// proceeds; a concurrent cron + overdue-AJAX run bails here, preventing
+		// double sends.
+		if ( ! Airdrop_DB::start_distributing_if_countdown( $campaign_id ) ) {
+			return;
+		}
 
 		$solana  = new Airdrop_Solana( $campaign->rpc_endpoint );
 		$entries = Airdrop_DB::get_entries( $campaign_id, 'pending' );

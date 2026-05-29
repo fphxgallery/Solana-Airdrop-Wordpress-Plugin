@@ -106,7 +106,7 @@ class Airdrop_Ajax {
 		}
 
 		if ( $campaign->status === 'countdown' && $campaign->countdown_start ) {
-			$countdown_target = strtotime( $campaign->countdown_start ) + (int) $campaign->countdown_seconds;
+			$countdown_target = strtotime( $campaign->countdown_start . ' UTC' ) + (int) $campaign->countdown_seconds;
 		}
 
 		wp_send_json_success( [
@@ -129,7 +129,7 @@ class Airdrop_Ajax {
 
 		$countdown_target = null;
 		if ( $campaign->status === 'countdown' && $campaign->countdown_start ) {
-			$countdown_target = strtotime( $campaign->countdown_start ) + (int) $campaign->countdown_seconds;
+			$countdown_target = strtotime( $campaign->countdown_start . ' UTC' ) + (int) $campaign->countdown_seconds;
 		}
 
 		$winners = [];
@@ -165,7 +165,7 @@ class Airdrop_Ajax {
 			wp_send_json_success( [ 'triggered' => false ] );
 		}
 
-		$fire_at = strtotime( $campaign->countdown_start ) + (int) $campaign->countdown_seconds;
+		$fire_at = strtotime( $campaign->countdown_start . ' UTC' ) + (int) $campaign->countdown_seconds;
 		if ( time() < $fire_at ) {
 			wp_send_json_success( [ 'triggered' => false ] );
 		}

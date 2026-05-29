@@ -80,7 +80,7 @@ class Airdrop_Frontend {
 
 		$countdown_target = null;
 		if ( $campaign->status === 'countdown' && $campaign->countdown_start ) {
-			$countdown_target = strtotime( $campaign->countdown_start ) + (int) $campaign->countdown_seconds;
+			$countdown_target = strtotime( $campaign->countdown_start . ' UTC' ) + (int) $campaign->countdown_seconds;
 		}
 
 		$entry_count = Airdrop_DB::get_entry_count( $campaign_id );

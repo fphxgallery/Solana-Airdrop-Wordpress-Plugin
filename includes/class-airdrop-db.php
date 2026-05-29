@@ -122,7 +122,25 @@ class Airdrop_DB {
 				"UPDATE {$wpdb->prefix}airdrop_campaigns
 				 SET status = 'countdown', countdown_start = %s
 				 WHERE id = %d AND status = 'pending'",
-				current_time( 'mysql' ), $id
+				current_time( 'mysql', true ), $id
+			)
+		);
+		return (int) $rows === 1;
+	}
+
+	/**
+	 * Atomically flips status countdown→distributing. Returns true only for the
+	 * single caller that wins the flip, so token sends run exactly once even when
+	 * the cron and the overdue-AJAX fallback fire concurrently.
+	 */
+	public static function start_distributing_if_countdown( int $id ): bool {
+		global $wpdb;
+		$rows = $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$wpdb->prefix}airdrop_campaigns
+				 SET status = 'distributing'
+				 WHERE id = %d AND status = 'countdown'",
+				$id
 			)
 		);
 		return (int) $rows === 1;

@@ -163,6 +163,10 @@ For production deployments with high reliability requirements, configure a real 
 
 ## Changelog
 
+### 1.0.6
+- **Fix double-send race in the draw:** the `countdown → distributing` transition is now an atomic conditional update (`start_distributing_if_countdown()`), matching the existing countdown flip. Previously the cron handler read status then wrote `distributing` non-atomically, so a concurrent WP-Cron run and overdue-AJAX fallback (or multiple visitors hitting the page at countdown end) could both pass the guard and pay every winner twice. Only the caller that wins the flip now proceeds.
+- **Fix countdown timezone mismatch:** `countdown_start` is now stored in GMT (`current_time('mysql', true)`) and every read parses it as UTC. Previously it was stored in site-local time but read with `strtotime()` as UTC, so on any non-UTC site the countdown target — and the cron fire time — was off by the GMT offset.
+
 ### 1.0.5
 - **Dropped the GMP requirement; now uses BCMath.** Base58 encode/decode was rewritten with BCMath (`bcadd`/`bcmul`/`bcdiv`/`bcmod`) instead of GMP, and the Ed25519 off-curve check for ATA/PDA derivation now uses libsodium's `sodium_crypto_sign_ed25519_pk_to_curve25519()` (which throws on off-curve input) instead of GMP modular arithmetic. Auto-send now requires only `sodium` + `bcmath`, both far more commonly available than GMP.
 
