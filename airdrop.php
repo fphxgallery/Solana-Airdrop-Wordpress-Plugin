@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Airdrop
  * Description: Solana SPL token giveaway — users enter wallet addresses, a countdown triggers on threshold, winners are drawn and tokens sent automatically.
- * Version:     1.0.3
+ * Version:     1.0.4
  * Author:      fPHX
  * License:     GPL-2.0-or-later
  * Text Domain: airdrop
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'AIRDROP_VERSION',    '1.0.3' );
+define( 'AIRDROP_VERSION',    '1.0.4' );
 define( 'AIRDROP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AIRDROP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -52,4 +52,14 @@ register_deactivation_hook( __FILE__, function (): void {
 
 add_action( 'plugins_loaded', function (): void {
 	Airdrop_Plugin::instance();
+} );
+
+// Prevent WordPress from offering the unrelated "airdrop" plugin from the
+// wordpress.org directory as an update — it matches by folder slug, not author.
+// This plugin is self-managed via GitHub releases.
+add_filter( 'site_transient_update_plugins', function ( $transient ) {
+	if ( isset( $transient->response ) ) {
+		unset( $transient->response[ plugin_basename( __FILE__ ) ] );
+	}
+	return $transient;
 } );

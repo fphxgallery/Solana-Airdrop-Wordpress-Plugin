@@ -163,6 +163,9 @@ For production deployments with high reliability requirements, configure a real 
 
 ## Changelog
 
+### 1.0.4
+- **Suppress false update notices:** WordPress matches plugins to the wordpress.org directory by folder slug, and an unrelated plugin named `airdrop` there was being offered as an "update" (which would have overwritten this plugin). Added a `site_transient_update_plugins` filter so this plugin removes itself from core's update checks. It is self-managed via GitHub releases.
+
 ### 1.0.3
 - **Entry-time holding check:** wallets below the `required_holding` minimum are now rejected at submission with an instant, decimal-formatted message (e.g. "holds 1,200 but needs at least 5,000 tokens"). Skipped when no minimum is set or the wallet is already entered. The draw still re-checks on-chain and remains authoritative; the entry check **fails open** on RPC errors so a transient outage never blocks a real holder. Adds one RPC call per qualifying submission — use a private RPC under heavy traffic.
 
