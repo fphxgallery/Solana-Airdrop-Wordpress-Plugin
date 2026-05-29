@@ -163,6 +163,9 @@ For production deployments with high reliability requirements, configure a real 
 
 ## Changelog
 
+### 1.0.2
+- **Fix activation on MySQL:** removed the `DEFAULT '{}'` on the `custom_colors` `TEXT` column, which MySQL rejects (`BLOB, TEXT, GEOMETRY or JSON column ... can't have a default value`). The default is applied in PHP on insert instead. SQLite tolerated the invalid DDL, so this only surfaced on production MySQL.
+
 ### 1.0.1
 - **On-chain confirmation:** transfers are now confirmed via `getSignatureStatuses` before being marked `sent`; on-chain failures and timeouts are recorded as `failed` (with the signature kept for debugging).
 - **Sender SOL fee pre-check:** the draw aborts cleanly if the hot wallet can't cover fees + token-account rent for all winners, avoiding partial sends.

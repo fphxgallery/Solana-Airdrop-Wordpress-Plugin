@@ -23,7 +23,7 @@ class Airdrop_DB {
 			rpc_endpoint varchar(255) NOT NULL DEFAULT 'https://api.mainnet-beta.solana.com',
 			sender_pubkey varchar(64) NOT NULL DEFAULT '',
 			sender_privkey_enc text NOT NULL,
-			custom_colors text NOT NULL DEFAULT '{}',
+			custom_colors text NOT NULL,
 			max_entries int(11) UNSIGNED NOT NULL DEFAULT 0,
 			status enum('pending','countdown','distributing','complete') NOT NULL DEFAULT 'pending',
 			countdown_start datetime DEFAULT NULL,
