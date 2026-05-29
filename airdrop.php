@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Airdrop
  * Description: Solana SPL token giveaway — users enter wallet addresses, a countdown triggers on threshold, winners are drawn and tokens sent automatically.
- * Version:     1.0.2
+ * Version:     1.0.3
  * Author:      fPHX
  * License:     GPL-2.0-or-later
  * Text Domain: airdrop
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'AIRDROP_VERSION',    '1.0.2' );
+define( 'AIRDROP_VERSION',    '1.0.3' );
 define( 'AIRDROP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AIRDROP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 

@@ -57,7 +57,26 @@ class Airdrop_Ajax {
 		}
 
 		$already_entered = Airdrop_DB::wallet_already_entered( $campaign_id, $wallet );
-		$entry_id        = Airdrop_DB::insert_entry( $campaign_id, $wallet, $ip );
+
+		// Up-front holding check for instant feedback. Skipped when there's no
+		// minimum, or the wallet is already in the pool. The draw still re-checks
+		// on-chain at countdown end, so this is a UX gate, not the authority.
+		// Fails open: an RPC error lets the entry through (draw-time recheck catches it).
+		$required = (int) $campaign->required_holding;
+		if ( $required > 0 && ! $already_entered ) {
+			$solana  = new Airdrop_Solana( $campaign->rpc_endpoint );
+			$balance = $solana->token_balance_or_error( $wallet, $campaign->token_mint );
+			if ( ! is_wp_error( $balance ) && $balance < $required ) {
+				$dec  = (int) $campaign->token_decimals;
+				$need = $dec > 0 ? rtrim( rtrim( number_format( $required / pow( 10, $dec ), $dec, '.', ',' ), '0' ), '.' ) : number_format( $required );
+				$have = $dec > 0 ? rtrim( rtrim( number_format( $balance / pow( 10, $dec ), $dec, '.', ',' ), '0' ), '.' ) : number_format( $balance );
+				wp_send_json_error( [
+					'message' => "This wallet holds {$have} but needs at least {$need} tokens to qualify.",
+				] );
+			}
+		}
+
+		$entry_id = Airdrop_DB::insert_entry( $campaign_id, $wallet, $ip );
 
 		// Authoritative max-entries enforcement. The pre-insert check above is a
 		// fast path; this closes the check-then-insert race. A row's ordinal

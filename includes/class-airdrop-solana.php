@@ -41,6 +41,27 @@ class Airdrop_Solana {
 	}
 
 	/**
+	 * Like check_token_balance() but surfaces RPC failures as WP_Error instead
+	 * of collapsing them to 0, so callers can tell "holds nothing" apart from
+	 * "couldn't reach the chain" and fail open on transient errors.
+	 */
+	public function token_balance_or_error( string $wallet, string $mint ): int|\WP_Error {
+		$result = $this->rpc( 'getTokenAccountsByOwner', [
+			$wallet,
+			[ 'mint' => $mint ],
+			[ 'encoding' => 'jsonParsed' ],
+		] );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		if ( empty( $result['value'] ) ) {
+			return 0;
+		}
+		$amount = $result['value'][0]['account']['data']['parsed']['info']['tokenAmount']['amount'] ?? '0';
+		return (int) $amount;
+	}
+
+	/**
 	 * Returns the SOL balance of a wallet in lamports (0 on error).
 	 */
 	public function get_sol_balance( string $pubkey ): int {

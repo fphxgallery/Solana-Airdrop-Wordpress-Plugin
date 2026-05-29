@@ -11,7 +11,7 @@ A WordPress plugin for running Solana SPL token giveaways. Users enter their wal
 - **Wallet entry form** — clean glassmorphism card rendered via shortcode
 - **Configurable threshold** — countdown starts when N wallets have entered
 - **Countdown timer** — live H:M:S display with WP-Cron reliability fallback
-- **Balance qualification** — checks each wallet's SPL token balance against a minimum holding requirement
+- **Balance qualification** — checks each wallet's SPL token balance against a minimum holding requirement, both up front at entry (instant rejection with a clear message) and again at the draw (authoritative)
 - **Random draw** — configurable number of winners selected by `shuffle()` / Fisher-Yates
 - **Auto token send** — raw Solana transaction built and signed in PHP (no external packages)
 - **On-chain confirmation** — each send is verified via `getSignatureStatuses` before being marked sent; failed/unconfirmed txs are recorded as failed
@@ -162,6 +162,9 @@ For production deployments with high reliability requirements, configure a real 
 ---
 
 ## Changelog
+
+### 1.0.3
+- **Entry-time holding check:** wallets below the `required_holding` minimum are now rejected at submission with an instant, decimal-formatted message (e.g. "holds 1,200 but needs at least 5,000 tokens"). Skipped when no minimum is set or the wallet is already entered. The draw still re-checks on-chain and remains authoritative; the entry check **fails open** on RPC errors so a transient outage never blocks a real holder. Adds one RPC call per qualifying submission — use a private RPC under heavy traffic.
 
 ### 1.0.2
 - **Fix activation on MySQL:** removed the `DEFAULT '{}'` on the `custom_colors` `TEXT` column, which MySQL rejects (`BLOB, TEXT, GEOMETRY or JSON column ... can't have a default value`). The default is applied in PHP on insert instead. SQLite tolerated the invalid DDL, so this only surfaced on production MySQL.
