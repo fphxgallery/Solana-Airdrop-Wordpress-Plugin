@@ -1,5 +1,7 @@
 # Solana Airdrop WordPress Plugin
 
+![Airdrop plugin frontend — pending state](screenshots/preview.png)
+
 A WordPress plugin for running Solana SPL token giveaways. Users enter their wallet addresses; when entries hit a configurable threshold a countdown starts, wallets are checked for a minimum token holding to qualify, random winners are drawn, and tokens are sent automatically — no manual intervention required.
 
 ---
