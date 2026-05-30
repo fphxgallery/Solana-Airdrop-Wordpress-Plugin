@@ -55,9 +55,9 @@ Go to **Airdrop → New Campaign** and fill in:
 |---|---|
 | Campaign Name | Display name shown on the card |
 | Token Mint Address | SPL token mint (base58) |
-| Token Decimals | Decimal places (e.g. 9 for most tokens, 6 for USDC) |
-| Required Holding | Minimum raw token balance to qualify |
-| Prize Per Winner | Raw tokens sent to each winner |
+| Token Decimals | Decimal places (e.g. 9 for most tokens, 6 for USDC). Use **Fetch from chain** to read it directly from the mint |
+| Required Holding | Minimum tokens a wallet must hold to qualify, in whole tokens (converted to raw automatically) |
+| Prize Per Winner | Tokens sent to each winner, in whole tokens (converted to raw automatically) |
 | Number of Winners | How many winners to draw |
 | Wallet Threshold | Entries needed to start the countdown |
 | Countdown Duration | Seconds from threshold hit to drawing (e.g. 3600 = 1 hr) |
@@ -162,6 +162,10 @@ For production deployments with high reliability requirements, configure a real 
 ---
 
 ## Changelog
+
+### 1.0.7
+- **Enter amounts in whole tokens.** The **Required Holding** and **Prize Per Winner** fields now accept human token amounts (e.g. `1000`) instead of raw base units. The admin converts to raw using the token's decimals on save (BCMath-exact) and converts back for display when editing. Storage, qualification, and sending still use raw units — only the form boundary changed.
+- **Fetch token decimals from chain.** A **Fetch from chain** button next to Token Decimals reads the real value from the mint via the `getTokenSupply` RPC, so amounts can't silently be off by orders of magnitude from a wrong decimals entry.
 
 ### 1.0.6
 - **Fix double-send race in the draw:** the `countdown → distributing` transition is now an atomic conditional update (`start_distributing_if_countdown()`), matching the existing countdown flip. Previously the cron handler read status then wrote `distributing` non-atomically, so a concurrent WP-Cron run and overdue-AJAX fallback (or multiple visitors hitting the page at countdown end) could both pass the guard and pay every winner twice. Only the caller that wins the flip now proceeds.

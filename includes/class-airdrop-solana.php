@@ -62,6 +62,20 @@ class Airdrop_Solana {
 	}
 
 	/**
+	 * Returns the mint's on-chain decimals, or WP_Error if the mint can't be read.
+	 */
+	public function get_mint_decimals( string $mint ): int|\WP_Error {
+		$result = $this->rpc( 'getTokenSupply', [ $mint, [ 'commitment' => 'confirmed' ] ] );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		if ( ! isset( $result['value']['decimals'] ) ) {
+			return new \WP_Error( 'no_decimals', 'Not a valid SPL token mint, or no decimals returned.' );
+		}
+		return (int) $result['value']['decimals'];
+	}
+
+	/**
 	 * Returns the SOL balance of a wallet in lamports (0 on error).
 	 */
 	public function get_sol_balance( string $pubkey ): int {

@@ -85,6 +85,47 @@
 		});
 	});
 
+	// ── Admin: fetch mint decimals from chain ──────────────────────────
+
+	$(document).on('click', '.airdrop-fetch-decimals', function () {
+		var $btn  = $(this);
+		var $msg  = $btn.siblings('.airdrop-fetch-decimals-msg');
+		var mint  = $('#token_mint').val().trim();
+		var rpc   = $('#rpc_endpoint').val().trim();
+
+		if (!mint) {
+			$msg.css('color', '#a00').text('Enter a token mint address first.');
+			return;
+		}
+
+		$btn.prop('disabled', true).text('Fetching…');
+		$msg.css('color', '').text('');
+
+		$.ajax({
+			url:    (typeof airdropAdmin !== 'undefined' ? airdropAdmin.ajaxUrl : '/wp-admin/admin-ajax.php'),
+			method: 'POST',
+			data: {
+				action: 'airdrop_fetch_decimals',
+				nonce:  (typeof airdropAdmin !== 'undefined' ? airdropAdmin.nonce : ''),
+				mint:   mint,
+				rpc:    rpc,
+			},
+			success: function (res) {
+				if (res.success) {
+					$('#token_decimals').val(res.data.decimals);
+					$msg.css('color', '#1a7f37').text('Decimals: ' + res.data.decimals + ' (re-enter token amounts below).');
+				} else {
+					$msg.css('color', '#a00').text(res.data && res.data.message ? res.data.message : 'Fetch failed.');
+				}
+				$btn.prop('disabled', false).text('Fetch from chain');
+			},
+			error: function () {
+				$msg.css('color', '#a00').text('Network error.');
+				$btn.prop('disabled', false).text('Fetch from chain');
+			},
+		});
+	});
+
 	// ── Per-campaign instance ──────────────────────────────────────────
 
 	function AirdropInstance(el) {

@@ -15,6 +15,35 @@ class Airdrop_Ajax {
 		add_action( 'wp_ajax_nopriv_airdrop_check_overdue', [ $this, 'check_overdue' ] );
 		add_action( 'wp_ajax_airdrop_trigger_process',      [ $this, 'trigger_process' ] );
 		add_action( 'wp_ajax_airdrop_reset_campaign',       [ $this, 'reset_campaign' ] );
+		add_action( 'wp_ajax_airdrop_fetch_decimals',       [ $this, 'fetch_decimals' ] );
+	}
+
+	/**
+	 * Admin-only: read a mint's decimals from chain so the form can auto-fill them.
+	 */
+	public function fetch_decimals(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => 'Unauthorized.' ] );
+		}
+		check_ajax_referer( 'airdrop_admin_nonce', 'nonce' );
+
+		$mint = sanitize_text_field( $_POST['mint'] ?? '' );
+		$rpc  = esc_url_raw( $_POST['rpc'] ?? '' );
+
+		if ( ! preg_match( '/^[1-9A-HJ-NP-Za-km-z]{32,44}$/', $mint ) ) {
+			wp_send_json_error( [ 'message' => 'Enter a valid token mint address first.' ] );
+		}
+		if ( ! $rpc ) {
+			$rpc = 'https://api.mainnet-beta.solana.com';
+		}
+
+		$solana   = new Airdrop_Solana( $rpc );
+		$decimals = $solana->get_mint_decimals( $mint );
+		if ( is_wp_error( $decimals ) ) {
+			wp_send_json_error( [ 'message' => $decimals->get_error_message() ] );
+		}
+
+		wp_send_json_success( [ 'decimals' => $decimals ] );
 	}
 
 	public function submit_wallet(): void {

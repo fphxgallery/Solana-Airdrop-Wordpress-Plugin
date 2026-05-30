@@ -264,17 +264,19 @@ class Airdrop_Admin {
 					<tr>
 						<th><label for="token_decimals">Token Decimals</label></th>
 						<td><input type="number" id="token_decimals" name="token_decimals" value="<?php echo (int) $v['token_decimals']; ?>" min="0" max="18" style="width:80px;">
-						<p class="description">Decimal places for this token (e.g. 9 for SOL, 6 for USDC). Used for display only.</p></td>
+						<button type="button" class="button airdrop-fetch-decimals" style="margin-left:6px;">Fetch from chain</button>
+						<span class="airdrop-fetch-decimals-msg" style="margin-left:8px;"></span>
+						<p class="description">Decimal places for this token (e.g. 9 for SOL, 6 for USDC). Used to convert the token amounts below to raw units. Click <strong>Fetch from chain</strong> to read the real value from the mint.</p></td>
 					</tr>
 					<tr>
-						<th><label for="required_holding">Required Holding (raw)</label></th>
-						<td><input type="number" id="required_holding" name="required_holding" value="<?php echo (int) $v['required_holding']; ?>" min="0" style="width:160px;" required>
-						<p class="description">Minimum token balance a wallet must hold to qualify. In raw units (multiply human amount × 10^decimals).</p></td>
+						<th><label for="required_holding">Required Holding</label></th>
+						<td><input type="number" id="required_holding" name="required_holding" value="<?php echo esc_attr( self::raw_to_human( (string) $v['required_holding'], (int) $v['token_decimals'] ) ); ?>" min="0" step="any" style="width:160px;" required>
+						<p class="description">Minimum token balance a wallet must hold to qualify, in whole tokens (e.g. <code>1000</code>). Converted to raw units automatically using the decimals above.</p></td>
 					</tr>
 					<tr>
-						<th><label for="prize_amount">Prize Per Winner (raw)</label></th>
-						<td><input type="number" id="prize_amount" name="prize_amount" value="<?php echo (int) $v['prize_amount']; ?>" min="1" style="width:160px;" required>
-						<p class="description">Tokens sent to each winner. Raw units.</p></td>
+						<th><label for="prize_amount">Prize Per Winner</label></th>
+						<td><input type="number" id="prize_amount" name="prize_amount" value="<?php echo esc_attr( self::raw_to_human( (string) $v['prize_amount'], (int) $v['token_decimals'] ) ); ?>" min="0" step="any" style="width:160px;" required>
+						<p class="description">Tokens sent to each winner, in whole tokens (e.g. <code>1000</code>). Converted to raw units automatically.</p></td>
 					</tr>
 					<tr>
 						<th><label for="num_winners">Number of Winners</label></th>
@@ -449,6 +451,43 @@ class Airdrop_Admin {
 		<?php
 	}
 
+	// ── Amount Conversion (human ↔ raw) ──────────────────────────────────
+
+	/**
+	 * Human token amount → raw base units (string). raw = human × 10^decimals,
+	 * truncated to an integer. Uses BCMath when available to stay exact for the
+	 * large values SPL tokens produce (e.g. 1000 × 10^9).
+	 */
+	private static function human_to_raw( string $human, int $decimals ): string {
+		$human = trim( $human );
+		if ( $human === '' || ! is_numeric( $human ) ) {
+			return '0';
+		}
+		if ( function_exists( 'bcmul' ) ) {
+			return bcmul( $human, bcpow( '10', (string) $decimals ), 0 );
+		}
+		return sprintf( '%.0f', (float) $human * pow( 10, $decimals ) );
+	}
+
+	/**
+	 * Raw base units → human token amount for display, trailing zeros trimmed.
+	 */
+	private static function raw_to_human( string $raw, int $decimals ): string {
+		if ( $decimals <= 0 ) {
+			return (string) (int) $raw;
+		}
+		if ( function_exists( 'bcdiv' ) ) {
+			$val = bcdiv( $raw, bcpow( '10', (string) $decimals ), $decimals );
+		} else {
+			$val = sprintf( '%.' . $decimals . 'f', (float) $raw / pow( 10, $decimals ) );
+		}
+		// Trim trailing zeros and a dangling decimal point.
+		if ( strpos( $val, '.' ) !== false ) {
+			$val = rtrim( rtrim( $val, '0' ), '.' );
+		}
+		return $val === '' ? '0' : $val;
+	}
+
 	// ── Form Handlers ───────────────────────────────────────────────────
 
 	public function handle_save_campaign(): void {
@@ -460,12 +499,14 @@ class Airdrop_Admin {
 
 		$campaign_id = (int) ( $_POST['campaign_id'] ?? 0 );
 
+		$decimals = (int) ( $_POST['token_decimals'] ?? 9 );
+
 		$data = [
 			'name'              => sanitize_text_field( $_POST['name'] ?? '' ),
 			'token_mint'        => sanitize_text_field( $_POST['token_mint'] ?? '' ),
-			'token_decimals'    => (int) ( $_POST['token_decimals'] ?? 9 ),
-			'required_holding'  => (int) ( $_POST['required_holding'] ?? 0 ),
-			'prize_amount'      => (int) ( $_POST['prize_amount'] ?? 0 ),
+			'token_decimals'    => $decimals,
+			'required_holding'  => self::human_to_raw( (string) ( $_POST['required_holding'] ?? '0' ), $decimals ),
+			'prize_amount'      => self::human_to_raw( (string) ( $_POST['prize_amount'] ?? '0' ), $decimals ),
 			'num_winners'       => max( 1, (int) ( $_POST['num_winners'] ?? 1 ) ),
 			'wallet_threshold'  => max( 1, (int) ( $_POST['wallet_threshold'] ?? 10 ) ),
 			'max_entries'       => max( 0, (int) ( $_POST['max_entries'] ?? 0 ) ),
