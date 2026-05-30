@@ -83,13 +83,13 @@
 	letter-spacing: 0.05em;
 }
 
-.airdrop-badge--pending      { background: rgba(124,58,237,0.15); color: var(--airdrop-grad-start); }
-.airdrop-badge--countdown    { background: rgba(236,72,153,0.15); color: var(--airdrop-grad-end); }
+.airdrop-badge--pending      { background: color-mix(in srgb, var(--airdrop-grad-start) 15%, transparent); color: var(--airdrop-grad-start); }
+.airdrop-badge--countdown    { background: color-mix(in srgb, var(--airdrop-grad-end) 15%, transparent); color: var(--airdrop-grad-end); }
 .airdrop-badge--distributing { background: rgba(245,158,11,0.15); color: #d97706; }
 .airdrop-badge--complete     { background: rgba(16,185,129,0.15); color: #059669; }
 .airdrop-badge--qualified    { background: rgba(16,185,129,0.15); color: #059669; }
 .airdrop-badge--disqualified { background: rgba(239,68,68,0.12);  color: #dc2626; }
-.airdrop-badge--winner       { background: rgba(236,72,153,0.15); color: var(--airdrop-grad-end); }
+.airdrop-badge--winner       { background: color-mix(in srgb, var(--airdrop-grad-end) 15%, transparent); color: var(--airdrop-grad-end); }
 .airdrop-badge--sent         { background: rgba(16,185,129,0.15); color: #059669; }
 .airdrop-badge--failed       { background: rgba(239,68,68,0.12);  color: #dc2626; }
 

@@ -163,6 +163,10 @@ For production deployments with high reliability requirements, configure a real 
 
 ## Changelog
 
+### 1.0.8
+- **Sender wallet balances in admin.** A **Check balances** button on the campaign form reads the sender wallet's live SOL and token balance from chain (`getBalance` + `getTokenAccountsByOwner`), so you can confirm it's funded before running the draw. Uses the current form values, so unsaved edits can be checked too.
+- **Status pill follows the accent colors.** The `pending`, `countdown`, and `winner` badge backgrounds now derive from the Accent Start / Accent End color pickers via `color-mix`, instead of hardcoded purple/pink. Semantic badges (distributing, complete, qualified, disqualified, sent, failed) stay fixed since they signal state, not theme.
+
 ### 1.0.7
 - **Enter amounts in whole tokens.** The **Required Holding** and **Prize Per Winner** fields now accept human token amounts (e.g. `1000`) instead of raw base units. The admin converts to raw using the token's decimals on save (BCMath-exact) and converts back for display when editing. Storage, qualification, and sending still use raw units — only the form boundary changed.
 - **Fetch token decimals from chain.** A **Fetch from chain** button next to Token Decimals reads the real value from the mint via the `getTokenSupply` RPC, so amounts can't silently be off by orders of magnitude from a wrong decimals entry.

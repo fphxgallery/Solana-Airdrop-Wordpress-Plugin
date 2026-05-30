@@ -16,6 +16,46 @@ class Airdrop_Ajax {
 		add_action( 'wp_ajax_airdrop_trigger_process',      [ $this, 'trigger_process' ] );
 		add_action( 'wp_ajax_airdrop_reset_campaign',       [ $this, 'reset_campaign' ] );
 		add_action( 'wp_ajax_airdrop_fetch_decimals',       [ $this, 'fetch_decimals' ] );
+		add_action( 'wp_ajax_airdrop_sender_balances',      [ $this, 'sender_balances' ] );
+	}
+
+	/**
+	 * Admin-only: read the sender wallet's SOL + token balance from chain.
+	 * Uses the saved campaign's pubkey/mint/rpc/decimals, or values posted from
+	 * the form (so unsaved edits can be checked before saving).
+	 */
+	public function sender_balances(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => 'Unauthorized.' ] );
+		}
+		check_ajax_referer( 'airdrop_admin_nonce', 'nonce' );
+
+		$campaign_id = (int) ( $_POST['campaign_id'] ?? 0 );
+		$campaign    = $campaign_id ? Airdrop_DB::get_campaign( $campaign_id ) : null;
+
+		// Prefer posted form values (current edits); fall back to saved campaign.
+		$pubkey   = sanitize_text_field( $_POST['pubkey'] ?? ( $campaign->sender_pubkey ?? '' ) );
+		$mint     = sanitize_text_field( $_POST['mint'] ?? ( $campaign->token_mint ?? '' ) );
+		$rpc      = esc_url_raw( $_POST['rpc'] ?? ( $campaign->rpc_endpoint ?? '' ) );
+		$decimals = isset( $_POST['decimals'] ) ? (int) $_POST['decimals'] : (int) ( $campaign->token_decimals ?? 9 );
+
+		if ( ! preg_match( '/^[1-9A-HJ-NP-Za-km-z]{32,44}$/', $pubkey ) ) {
+			wp_send_json_error( [ 'message' => 'Enter a valid sender public key first.' ] );
+		}
+		if ( ! $rpc ) {
+			$rpc = 'https://api.mainnet-beta.solana.com';
+		}
+
+		$solana       = new Airdrop_Solana( $rpc );
+		$lamports     = $solana->get_sol_balance( $pubkey );
+		$token_raw    = preg_match( '/^[1-9A-HJ-NP-Za-km-z]{32,44}$/', $mint ) ? $solana->check_token_balance( $pubkey, $mint ) : 0;
+
+		wp_send_json_success( [
+			'lamports'  => $lamports,
+			'sol'       => $lamports / 1000000000,
+			'token_raw' => $token_raw,
+			'decimals'  => $decimals,
+		] );
 	}
 
 	/**

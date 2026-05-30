@@ -314,6 +314,14 @@ class Airdrop_Admin {
 							<p class="description">Stored AES-256 encrypted. <?php echo $campaign ? 'Leave blank to keep the existing key.' : 'Base58-encoded keypair.'; ?></p>
 						</td>
 					</tr>
+					<tr>
+						<th><label>Sender Balances</label></th>
+						<td>
+							<button type="button" class="button airdrop-check-balances" data-campaign="<?php echo (int) $edit_id; ?>">Check balances</button>
+							<span class="airdrop-balances-msg" style="margin-left:8px;"></span>
+							<p class="description">Live SOL and token balance of the sender wallet, read from chain using the public key, mint, decimals, and RPC above. Needs enough SOL for fees + token-account rent, and enough tokens to cover all prizes.</p>
+						</td>
+					</tr>
 				</table>
 
 				<?php

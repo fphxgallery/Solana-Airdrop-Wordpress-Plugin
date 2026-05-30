@@ -126,6 +126,48 @@
 		});
 	});
 
+	// ── Admin: check sender wallet balances ────────────────────────────
+
+	$(document).on('click', '.airdrop-check-balances', function () {
+		var $btn = $(this);
+		var $msg = $btn.siblings('.airdrop-balances-msg');
+
+		$btn.prop('disabled', true).text('Checking…');
+		$msg.css('color', '').text('');
+
+		$.ajax({
+			url:    (typeof airdropAdmin !== 'undefined' ? airdropAdmin.ajaxUrl : '/wp-admin/admin-ajax.php'),
+			method: 'POST',
+			data: {
+				action:      'airdrop_sender_balances',
+				nonce:       (typeof airdropAdmin !== 'undefined' ? airdropAdmin.nonce : ''),
+				campaign_id: $btn.data('campaign') || 0,
+				pubkey:      $('#sender_pubkey').val().trim(),
+				mint:        $('#token_mint').val().trim(),
+				rpc:         $('#rpc_endpoint').val().trim(),
+				decimals:    $('#token_decimals').val(),
+			},
+			success: function (res) {
+				if (res.success) {
+					var d = res.data;
+					var sol = Number(d.sol).toLocaleString(undefined, { maximumFractionDigits: 9 });
+					var dec = parseInt(d.decimals, 10) || 0;
+					var tok = dec > 0
+						? (Number(d.token_raw) / Math.pow(10, dec)).toLocaleString(undefined, { maximumFractionDigits: dec })
+						: Number(d.token_raw).toLocaleString();
+					$msg.css('color', '#1a7f37').html('<strong>' + sol + ' SOL</strong> &nbsp;·&nbsp; <strong>' + tok + '</strong> tokens');
+				} else {
+					$msg.css('color', '#a00').text(res.data && res.data.message ? res.data.message : 'Check failed.');
+				}
+				$btn.prop('disabled', false).text('Check balances');
+			},
+			error: function () {
+				$msg.css('color', '#a00').text('Network error.');
+				$btn.prop('disabled', false).text('Check balances');
+			},
+		});
+	});
+
 	// ── Per-campaign instance ──────────────────────────────────────────
 
 	function AirdropInstance(el) {
