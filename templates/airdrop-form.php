@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 $cid = (int) $campaign->id;
 $status = $campaign->status;
 $threshold = (int) $campaign->wallet_threshold;
+$max_entries = (int) $campaign->max_entries;
 $num_winners = (int) $campaign->num_winners;
 $dec = (int) $campaign->token_decimals;
 $prize_human = $dec > 0 ? rtrim( rtrim( number_format( (int) $campaign->prize_amount / pow( 10, $dec ), $dec, '.', ',' ), '0' ), '.' ) : number_format( (int) $campaign->prize_amount );
@@ -66,7 +67,9 @@ $accepting = ! in_array( $status, [ 'distributing', 'complete' ], true );
 		<div class="airdrop-progress-wrap">
 			<p class="airdrop-progress-label">
 				<span id="airdrop-count-<?php echo $cid; ?>"><?php echo $entry_count; ?></span>
-				of <strong><?php echo $threshold; ?></strong> wallets entered
+				of <strong><?php echo $threshold; ?></strong> wallets entered<?php if ( $max_entries > 0 ) : ?>
+				<span class="airdrop-spots" id="airdrop-spots-<?php echo $cid; ?>">(<?php echo max( 0, $max_entries - $entry_count ); ?> spots left)</span>
+				<?php endif; ?>
 			</p>
 			<div class="airdrop-progress-bar">
 				<div class="airdrop-progress-fill" id="airdrop-fill-<?php echo $cid; ?>" style="width:<?php echo min( 100, round( $entry_count / max( 1, $threshold ) * 100 ) ); ?>%"></div>

@@ -94,6 +94,7 @@ class Airdrop_Frontend {
 			'status'           => $campaign->status,
 			'entryCount'       => $entry_count,
 			'walletThreshold'  => (int) $campaign->wallet_threshold,
+			'maxEntries'       => (int) $campaign->max_entries,
 			'countdownTarget'  => $countdown_target,
 			'tokenDecimals'    => (int) $campaign->token_decimals,
 			'prizeAmount'      => (int) $campaign->prize_amount,

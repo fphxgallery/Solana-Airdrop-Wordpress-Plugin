@@ -163,6 +163,9 @@ For production deployments with high reliability requirements, configure a real 
 
 ## Changelog
 
+### 1.0.9
+- **"Spots left" on the entry card.** When a campaign has a Max Entries cap, the frontend card now shows `(N spots left)` on the count line and updates it live as wallets enter. Hidden entirely for uncapped (unlimited) campaigns.
+
 ### 1.0.8
 - **Sender wallet balances in admin.** A **Check balances** button on the campaign form reads the sender wallet's live SOL and token balance from chain (`getBalance` + `getTokenAccountsByOwner`), so you can confirm it's funded before running the draw. Uses the current form values, so unsaved edits can be checked too.
 - **Status pill follows the accent colors.** The `pending`, `countdown`, and `winner` badge backgrounds now derive from the Accent Start / Accent End color pickers via `color-mix`, instead of hardcoded purple/pink. Semantic badges (distributing, complete, qualified, disqualified, sent, failed) stay fixed since they signal state, not theme.

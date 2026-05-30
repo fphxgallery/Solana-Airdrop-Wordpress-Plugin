@@ -309,6 +309,12 @@
 			this.$el.find('.airdrop-progress-hint').text(
 				Math.max(0, threshold - entryCount) + ' more entries needed to start the countdown'
 			);
+			var maxEntries = this.data.maxEntries || 0;
+			if (maxEntries > 0) {
+				this.$el.find('#airdrop-spots-' + this.campaignId).text(
+					'(' + Math.max(0, maxEntries - entryCount) + ' spots left)'
+				);
+			}
 		}
 
 		if (status === 'complete' || status === 'distributing') {

@@ -104,6 +104,13 @@
 	font-weight: 500;
 }
 
+.airdrop-spots {
+	margin-left: 0.4rem;
+	font-weight: 400;
+	font-size: 0.9em;
+	opacity: 0.6;
+}
+
 .airdrop-progress-bar {
 	height: 8px;
 	background: color-mix(in srgb, var(--airdrop-grad-start) 15%, transparent);
